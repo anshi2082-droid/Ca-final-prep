@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My CA Final HQ</title>
+<style>
+:root{--bg:#f8f6fc;--card:#fff;--ink:#29233d;--muted:#817b93;--pink:#e9a7c5;--purple:#8066bc;--line:#eee8f5;--green:#5d9d80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif}
+header{background:linear-gradient(120deg,#8066bc,#b18acb);color:white;padding:27px 20px 34px;border-radius:0 0 28px 28px}
+.wrap{max-width:1050px;margin:auto}
+.top{font-size:12px;letter-spacing:2px;opacity:.85}
+h1{font-size:30px;margin:9px 0}
+header p{margin:0;opacity:.9;font-size:14px}
+main{max-width:1050px;margin:-15px auto 0;padding:0 15px 40px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{background:var(--card);padding:17px;border:1px solid var(--line);border-radius:18px;margin-bottom:14px}
+.stat{font-size:25px;font-weight:750;margin:8px 0 3px}
+.small{font-size:12px;color:var(--muted)}
+.section{font-size:18px;margin:25px 0 12px}
+.subjects{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.subject{background:white;border:1px solid var(--line);padding:15px;border-radius:16px}
+.subject h3{font-size:15px;margin:0 0 5px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #e5deee;border-radius:10px;background:#fff;color:var(--ink);font:inherit;margin:5px 0 10px}
+button{background:var(--purple);color:white;border:0;border-radius:10px;padding:11px 14px;font:inherit;font-weight:650;cursor:pointer}
+button.secondary{background:#f0ebf8;color:#5e4b8a}
+button:active{transform:scale(.98)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.progress{height:7px;background:#eee8f5;border-radius:9px;overflow:hidden;margin:12px 0}
+.progress span{display:block;height:100%;background:var(--pink);width:0}
+.task{display:flex;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.task input{width:auto;margin:0}
+.task.done span{text-decoration:line-through;color:var(--muted)}
+.timer{font-size:36px;font-weight:750;text-align:center;padding:12px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:18px}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subjects{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:26px}.card{padding:14px}}
+@media(max-width:380px){.subjects{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="top">YOUR PERSONAL STUDY SPACE</div>
+<h1>My CA Final HQ ✨</h1>
+<p>May 2027 · One day at a time. One step closer.</p>
+</div></header>
+<main>
+<div class="grid" style="margin-top:25px">
+<div class="card"><div class="small">STUDY HOURS TODAY</div><div class="stat" id="hours">0h 0m</div><div class="small">Every focused minute counts.</div></div>
+<div class="card"><div class="small">DAILY TARGET</div><div class="stat" id="targetShow">6 hours</div><div class="small">Set your target below.</div></div>
+<div class="card"><div class="small">TASKS COMPLETED</div><div class="stat" id="taskCount">0/0</div><div class="small">Small wins add up.</div></div>
+<div class="card"><div class="small">CURRENT STREAK 🔥</div><div class="stat" id="streak">0 days</div><div class="small">Study at least once each day.</div></div>
+</div>
+
+<h2 class="section">🌷 Your study settings</h2>
+<div class="card">
+<label class="small" for="target">DAILY STUDY TARGET (HOURS)</label>
+<div class="row"><input id="target" type="number" min="1" max="18" value="6"><button onclick="saveTarget()">Save target</button></div>
+<label class="small" for="available">AVAILABLE TIME TODAY (HOURS)</label>
+<input id="available" type="number" min="0.5" max="18" step="0.5" value="6">
+<button class="secondary" onclick="makePlan()">Create today's suggested plan</button>
+<div id="plan" class="small" style="margin-top:10px"></div>
+</div>
+
+<h2 class="section">📚 My subjects</h2>
+<div class="subjects" id="subjects"></div>
+
+<h2 class="section">✅ Today's targets</h2>
+<div class="card">
+<div class="row"><input id="taskInput" placeholder="e.g. Complete FR lecture 3"><button onclick="addTask()">Add target</button></div>
+<div id="tasks"></div>
+<div class="progress"><span id="taskBar"></span></div>
+<div class="small" id="taskSummary">You've got this!</div>
+</div>
+
+<h2 class="section">⏱️ Focus timer</h2>
+<div class="card">
+<div class="small" style="text-align:center">YOUR NEXT FOCUS SESSION</div>
+<div class="timer" id="timer">25:00</div>
+<div class="row"><button onclick="startTimer()">Start</button><button class="secondary" onclick="pauseTimer()">Pause</button><button class="secondary" onclick="resetTimer()">Reset</button></div>
+<p class="small" style="text-align:center">Finish a session to add 25 minutes to today's study time.</p>
+</div>
+
+<h2 class="section">📝 Revision tracker</h2>
+<div class="card">
+<div class="row"><select id="revSubject"><option>FR</option><option>AFM</option><option>Audit</option><option>Direct Tax</option><option>Indirect Tax</option><option>IBS</option></select><input id="revTopic" placeholder="Topic to revise"></div>
+<div class="row"><select id="revCycle"><option>First revision</option><option>Second revision</option><option>Third revision</option><option>Final revision</option></select><input id="revDate" type="date"></div>
+<button onclick="addRevision()">Add revision</button>
+<div id="revisions"></div>
+</div>
+<footer>Your journey, your pace. Made with 💜 for May 2027.</footer>
+</main>
+<script>
+const subjectsList=["FR","AFM","Audit","Direct Tax","Indirect Tax","IBS"];
+const colors=["#f6e8f0","#eee8fa","#e6f2ed","#f9eee0","#e8f0fa","#f8e9e5"];
+let data;
+try{data=JSON.parse(localStorage.getItem("caHQData"))||{};}catch(e){data={};}
+data.tasks=data.tasks||[];
+data.revisions=data.revisions||[];
+data.subjectProgress=data.subjectProgress||{};
+data.studyMinutes=data.studyMinutes||{};
+data.targets=data.targets||{};
+data.sessions=data.sessions||{};
+const today=()=>new Date().toLocaleDateString("en-CA");
+function save(){localStorage.setItem("caHQData",JSON.stringify(data));}
+function minsToday(){return data.studyMinutes[today()]||0;}
+function renderStats(){
+let m=minsToday();document.getElementById("hours").textContent=Math.floor(m/60)+"h "+m%60+"m";
+document.getElementById("targetShow").textContent=(data.target||6)+" hours";
+document.getElementById("taskCount").textContent=data.tasks.filter(t=>t.done).length+"/"+data.tasks.length;
+document.getElementById("target").value=data.target||6;
+let streak=0,d=new Date();
+while(true){let k=d.toLocaleDateString("en-CA");if((data.studyMinutes[k]||0)<=0)break;streak++;d.setDate(d.getDate()-1);}
+document.getElementById("streak").textContent=streak+" days";
+}
+function saveTarget(){data.target=Math.max(1,Math.min(18,Number(document.getElementById("target").value)||6));save();renderStats();}
+function renderSubjects(){
+document.getElementById("subjects").innerHTML=subjectsList.map((s,i)=>{
+let p=data.subjectProgress[s]||0;
+return `<div class="subject" style="background:${colors[i]}"><h3>${s}</h3><div class="small">Syllabus completion</div><div class="progress"><span style="width:${p}%;background:#8066bc"></span></div><div class="row"><span class="small">${p}% complete</span><select aria-label="${s} completion" onchange="setProgress('${s}',this.value)" style="width:90px;padding:6px;margin:0"><option value="">Update</option>${[0,10,20,30,40,50,60,70,80,90,100].map(n=>`<option value="${n}" ${p===n?"selected":""}>${n}%</option>`).join("")}</select></div></div>`;
+}).join("");
+}
+function setProgress(s,v){if(v!=="")data.subjectProgress[s]=Number(v);save();renderSubjects();}
+function addTask(){let el=document.getElementById("taskInput"),v=el.value.trim();if(!v)return;data.tasks.push({text:v,done:false});el.value="";save();renderTasks();}
+function toggleTask(i,v){data.tasks[i].done=v;save();renderTasks();}
+function deleteTask(i){data.tasks.splice(i,1);save();renderTasks();}
+function renderTasks(){
+let box=document.getElementById("tasks");
+box.innerHTML=data.tasks.map((t,i)=>`<div class="task ${t.done?"done":""}"><input type="checkbox" ${t.done?"checked":""} onchange="toggleTask(${i},this.checked)"><span style="flex:1">${escapeText(t.text)}</span><button class="secondary" onclick="deleteTask(${i})" style="padding:5px 9px">×</button></div>`).join("");
+let done=data.tasks.filter(t=>t.done).length,total=data.tasks.length;
+document.getElementById("taskBar").style.width=(total?done/total*100:0)+"%";
+document.getElementById("taskSummary").textContent=total?(done===total?"Amazing! All targets complete 🎉":done+" completed — "+(total-done)+" to go."):"Add your first target to get started.";
+renderStats();
+}
+function escapeText(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function makePlan(){
+let h=Math.max(.5,Number(document.getElementById("available").value)||1),n=Math.floor(h*2),subjects=["FR","AFM","Audit","Direct Tax","Indirect Tax","IBS"],out=[];
+for(let i=0;i<n;i++)out.push(subjects[i%subjects.length]);
+document.getElementById("plan").textContent="Suggested blocks (30 min each): "+out.join(" · ")+". Adjust these to match your actual lecture backlog.";
+}
+function addRevision(){
+let s=document.getElementById("revSubject").value,t=document.getElementById("revTopic").value.trim(),c=document.getElementById("revCycle").value,d=document.getElementById("revDate").value;
+if(!t){alert("Enter a topic first.");return;}
+data.revisions.push({s,t,c,d,done:false});document.getElementById("revTopic").value="";save();renderRevisions();
+}
+function renderRevisions(){
+document.getElementById("revisions").innerHTML=data.revisions.map((r,i)=>`<div class="task ${r.done?"done":""}"><input type="checkbox" ${r.done?"checked":""} onchange="data.revisions[${i}].done=this.checked;save();renderRevisions()"><span style="flex:1"><b>${escapeText(r.s)}:</b> ${escapeText(r.t)}<div class="small">${escapeText(r.c)}${r.d?" · Due "+escapeText(r.d):""}</div></span><button class="secondary" onclick="data.revisions.splice(${i},1);save();renderRevisions()" style="padding:5px 9px">×</button></div>`).join("")||'<p class="small">Your revision topics will appear here.</p>';
+}
+let remaining=25*60,interval=null,sessionCredited=false;
+function showTimer(){document.getElementById("timer").textContent=String(Math.floor(remaining/60)).padStart(2,"0")+":"+String(remaining%60).padStart(2,"0");}
+function startTimer(){if(interval)return;interval=setInterval(()=>{remaining--;showTimer();if(remaining<=0){clearInterval(interval);interval=null;if(!sessionCredited){data.studyMinutes[today()]=minsToday()+25;sessionCredited=true;save();renderStats();alert("Focus session complete! 25 minutes added. Take a short break 💜");}}},1000);}
+function pauseTimer(){clearInterval(interval);interval=null;}
+function resetTimer(){pauseTimer();remaining=25*60;sessionCredited=false;showTimer();}
+renderStats();renderSubjects();renderTasks();renderRevisions();showTimer();
+</script>
+</body>
+</html>

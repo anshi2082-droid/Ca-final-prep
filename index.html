@@ -159,7 +159,12 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
   <div class="modal"><div class="modal-head"><div><div class="eyebrow">A little quiet, just for you</div><h2>Focus session</h2></div><button class="close" id="closeTimer" aria-label="Close timer">×</button></div>
     <div class="timer-display" id="timerDisplay">25:00</div><div class="timer-sub" id="timerStatus">Ready when you are.</div>
     <div class="timer-controls"><button class="btn" id="timerStart">Start</button><button class="btn secondary" id="timerReset">Reset</button><button class="btn secondary" id="timerFinish">Log time</button></div>
-    <div class="timer-options"><button data-min="15">15 min</button><button class="selected" data-min="25">25 min</button><button data-min="45">45 min</button><button data-min="60">60 min</button></div>
+    <div class="timer-options" style="align-items:center;gap:10px">
+      <button type="button" id="timerMinus" aria-label="Decrease timer by one minute" style="font-size:20px;min-width:40px">−</button>
+      <div style="min-width:82px;text-align:center"><strong id="customMinutes" style="font-size:18px;color:var(--deep)">25 min</strong><div style="font-size:10px;color:var(--muted)">Focus duration</div></div>
+      <button type="button" id="timerPlus" aria-label="Increase timer by one minute" style="font-size:20px;min-width:40px">+</button>
+    </div>
+    <div class="timer-options" aria-label="Quick timer presets"><button data-min="15">15 min</button><button class="selected" data-min="25">25 min</button><button data-min="45">45 min</button><button data-min="60">60 min</button></div>
     <p style="font-size:11px;color:var(--muted);text-align:center;margin:19px 0 0">Close this window whenever you like. Your completed focus time is logged when you finish or use “Log time”.</p>
   </div>
 </div>
@@ -411,6 +416,11 @@ function syncTimer(){
 function timerUI(){
   const m=Math.floor(remaining/60),s=remaining%60;
   $('#timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  $('#customMinutes').textContent=`${Math.round(timerLength/60)} min`;
+  $('#timerMinus').disabled=running || timerLength<=60;
+  $('#timerPlus').disabled=running || timerLength>=24*60*60;
+  $('#timerMinus').style.opacity=$('#timerMinus').disabled?'.45':'1';
+  $('#timerPlus').style.opacity=$('#timerPlus').disabled?'.45':'1';
   $('#timerStart').textContent=running?'Pause':'Start';
   $('#timerStatus').textContent=running?'You’re in focus mode. Keep going.':remaining===0?'Session complete. Log your time!':'Ready when you are.';
 }
@@ -457,7 +467,16 @@ document.addEventListener('fullscreenchange',()=>{
 $('#openTimer').onclick=$('#welcomeTimer').onclick=()=>{$('#timerOverlay').classList.add('open');timerUI()};
 $('#closeTimer').onclick=()=>$('#timerOverlay').classList.remove('open');$('#timerOverlay').onclick=e=>{if(e.target.id==='timerOverlay')$('#timerOverlay').classList.remove('open')};
 $('#timerStart').onclick=startPause;$('#timerReset').onclick=resetTimer;$('#timerFinish').onclick=finishTimer;
-$$('[data-min]').forEach(b=>b.onclick=()=>{if(running)stopTick();timerLength=+b.dataset.min*60;remaining=timerLength;elapsed=0;$$('[data-min]').forEach(x=>x.classList.toggle('selected',x===b));timerUI()});
+function setTimerMinutes(minutes){
+  if(running)return;
+  timerLength=Math.min(24*60,Math.max(1,Math.round(minutes)))*60;
+  remaining=timerLength;elapsed=0;lastTick=Date.now();
+  $$('[data-min]').forEach(x=>x.classList.toggle('selected',Number(x.dataset.min)===timerLength/60));
+  persistTimer();timerUI();
+}
+$('#timerMinus').onclick=()=>setTimerMinutes(timerLength/60-1);
+$('#timerPlus').onclick=()=>setTimerMinutes(timerLength/60+1);
+$$('[data-min]').forEach(b=>b.onclick=()=>setTimerMinutes(+b.dataset.min));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#timerOverlay').classList.remove('open');$('#sidebar').classList.remove('open')}});
 function init(){const d=new Date();$('#todayDate').textContent=formatDate(d,{weekday:'short',month:'short',day:'numeric',year:'numeric'});$('#greeting').textContent=(d.getHours()<12?'Good morning.':d.getHours()<17?'Good afternoon.':'Good evening.');$('#revisionDate').value=todayKey();restoreTimer();if(running){lastTick=Date.now();interval=setInterval(tick,250);persistTimer()}renderAll();timerUI()}
 init();

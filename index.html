@@ -358,23 +358,54 @@ $('#exportData').onclick=downloadBackup;$('#exportData2').onclick=downloadBackup
 $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const incoming=JSON.parse(await f.text());if(!incoming.subjects||!incoming.sessions)throw new Error();if(confirm('Restore this backup? It will replace the data currently saved in this browser.')){data=Object.assign({subjects:defaultSubjects,targets:{},revisions:[],sessions:[],dayPlans:{},goal:8},incoming);save();toast('Backup restored.')}}catch{alert('That file does not look like a valid CA Final Sanctuary backup.')}e.target.value=''};
 $('#clearAll').onclick=()=>{if(confirm('This will permanently clear all CA Final Sanctuary data saved in this browser. Download a backup first if you want to keep it.')){localStorage.removeItem('caSanctuaryData');data={subjects:defaultSubjects.map(s=>({...s})),targets:{},revisions:[],sessions:[],dayPlans:{},goal:8};save();toast('Site data cleared.')}};
 
-// Focus timer uses real elapsed wall-clock time, so switching tabs, minimising
-// the browser, or temporarily throttling background timers won't slow the countdown.
+// Focus timer uses an absolute end timestamp, not interval tick counts.
+// Browsers throttle timers in background tabs; on return we calculate the real
+// elapsed time and persist the active session so a refresh/tab switch won't lose it.
 let timerLength=25*60,remaining=timerLength,interval=null,running=false,lastTick=0,elapsed=0;
+const TIMER_STATE_KEY='caSanctuaryActiveTimer';
+function persistTimer(){
+  try {
+    localStorage.setItem(TIMER_STATE_KEY,JSON.stringify({
+      running, timerLength, remaining, elapsed, lastTick,
+      endAt: running ? Date.now()+remaining*1000 : null
+    }));
+  } catch(e) {}
+}
+function restoreTimer(){
+  try {
+    const saved=JSON.parse(localStorage.getItem(TIMER_STATE_KEY)||'null');
+    if(!saved)return;
+    timerLength=Number(saved.timerLength)||25*60;
+    remaining=Math.max(0,Number(saved.remaining)||0);
+    elapsed=Math.max(0,Number(saved.elapsed)||0);
+    running=!!saved.running;
+    lastTick=Number(saved.lastTick)||Date.now();
+    if(running && saved.endAt){
+      const now=Date.now();
+      const passed=Math.max(0,Math.floor((now-lastTick)/1000));
+      elapsed+=passed;
+      remaining=Math.max(0,Math.ceil((Number(saved.endAt)-now)/1000));
+      lastTick=now;
+      if(remaining===0)running=false;
+    }
+  } catch(e) {}
+}
 function syncTimer(){
   if(!running)return;
   const now=Date.now();
   const diff=Math.max(0,Math.floor((now-lastTick)/1000));
   if(diff<1)return;
-  lastTick+=diff*1000;
+  lastTick=now;
   elapsed+=diff;
   remaining=Math.max(0,remaining-diff);
   if(remaining<=0){
     stopTick();
     timerUI();
+    persistTimer();
     toast('Focus session complete — well done!');
   } else {
     timerUI();
+    persistTimer();
   }
 }
 function timerUI(){
@@ -386,24 +417,28 @@ function timerUI(){
 function stopTick(){
   if(interval){clearInterval(interval);interval=null}
   running=false;
+  persistTimer();
 }
 function tick(){syncTimer()}
 function startPause(){
   if(running){syncTimer();stopTick();timerUI();return}
   if(remaining<=0){remaining=timerLength;elapsed=0}
-  running=true;lastTick=Date.now();interval=setInterval(tick,250);timerUI();
+  running=true;lastTick=Date.now();interval=setInterval(tick,250);persistTimer();timerUI();
 }
-function resetTimer(){stopTick();remaining=timerLength;elapsed=0;timerUI()}
+function resetTimer(){stopTick();remaining=timerLength;elapsed=0;lastTick=Date.now();persistTimer();timerUI()}
 function finishTimer(){
   syncTimer();
   stopTick();
   const mins=Math.floor(elapsed/60);
   if(mins>0)logSession(mins,'Focus timer');
   else toast('No full minutes to log yet.');
-  remaining=timerLength;elapsed=0;timerUI();
+  remaining=timerLength;elapsed=0;lastTick=Date.now();persistTimer();timerUI();
 }
-// Immediately catch up when the tab becomes visible again.
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running)syncTimer()});
+// Recalculate on returning to the tab and when the browser wakes from sleep.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running){syncTimer();timerUI()}});
+window.addEventListener('focus',()=>{if(running){syncTimer();timerUI()}});
+window.addEventListener('pageshow',()=>{if(running){syncTimer();timerUI()}});
+window.addEventListener('pagehide',persistTimer);
 const fullscreenBtn=$('#fullscreenBtn');
 async function toggleFullscreen(){
   try{
@@ -424,7 +459,7 @@ $('#closeTimer').onclick=()=>$('#timerOverlay').classList.remove('open');$('#tim
 $('#timerStart').onclick=startPause;$('#timerReset').onclick=resetTimer;$('#timerFinish').onclick=finishTimer;
 $$('[data-min]').forEach(b=>b.onclick=()=>{if(running)stopTick();timerLength=+b.dataset.min*60;remaining=timerLength;elapsed=0;$$('[data-min]').forEach(x=>x.classList.toggle('selected',x===b));timerUI()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#timerOverlay').classList.remove('open');$('#sidebar').classList.remove('open')}});
-function init(){const d=new Date();$('#todayDate').textContent=formatDate(d,{weekday:'short',month:'short',day:'numeric',year:'numeric'});$('#greeting').textContent=(d.getHours()<12?'Good morning.':d.getHours()<17?'Good afternoon.':'Good evening.');$('#revisionDate').value=todayKey();renderAll();timerUI()}
+function init(){const d=new Date();$('#todayDate').textContent=formatDate(d,{weekday:'short',month:'short',day:'numeric',year:'numeric'});$('#greeting').textContent=(d.getHours()<12?'Good morning.':d.getHours()<17?'Good afternoon.':'Good evening.');$('#revisionDate').value=todayKey();restoreTimer();if(running){lastTick=Date.now();interval=setInterval(tick,250);persistTimer()}renderAll();timerUI()}
 init();
 </script>
 </body>

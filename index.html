@@ -362,7 +362,7 @@ $('#clearAll').onclick=()=>{if(confirm('This will permanently clear all CA Final
 let timerLength=25*60,remaining=timerLength,interval=null,running=false,lastTick=0,elapsed=0;
 function timerUI(){const m=Math.floor(remaining/60),s=remaining%60;$('#timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;$('#timerStart').textContent=running?'Pause':'Start';$('#timerStatus').textContent=running?'You’re in focus mode. Keep going.':remaining===0?'Session complete. Log your time!':'Ready when you are.'}
 function stopTick(){if(interval){clearInterval(interval);interval=null}running=false}
-function tick(){if(!running)return;const now=Date.now();const diff=Math.max(1,Math.floor((now-lastTick)/1000));lastTick=now;remaining=Math.max(0,remaining-diff);elapsed+=diff;if(remaining<=0){stopTick();timerUI();toast('Focus session complete — well done!');return}timerUI()}
+function tick(){if(!running)return;const now=Date.now();const diff=Math.floor((now-lastTick)/1000);if(diff<1)return;lastTick+=diff*1000;remaining=Math.max(0,remaining-diff);elapsed+=diff;if(remaining<=0){stopTick();timerUI();toast('Focus session complete — well done!');return}timerUI()}
 function startPause(){if(running){stopTick();timerUI();return}if(remaining<=0){remaining=timerLength;elapsed=0}running=true;lastTick=Date.now();interval=setInterval(tick,500);timerUI()}
 function resetTimer(){stopTick();remaining=timerLength;elapsed=0;timerUI()}
 function finishTimer(){stopTick();const mins=Math.floor(elapsed/60);if(mins>0)logSession(mins,'Focus timer');else toast('No full minutes to log yet.');remaining=timerLength;elapsed=0;timerUI()}

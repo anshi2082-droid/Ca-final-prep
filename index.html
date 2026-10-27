@@ -39,7 +39,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#304b36;color:white;padding:11px 16px;border-radius:12px;font-size:12px;box-shadow:var(--shadow);display:none;z-index:50}
 .mobile-menu{display:none}
 @media(max-width:900px){.sidebar{width:205px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col{grid-template-columns:1fr}.planner-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:650px){.app{display:block}.sidebar{position:fixed;z-index:15;left:-250px;top:0;transition:left .2s;width:238px;box-shadow:10px 0 30px #243b2812}.sidebar.open{left:0}.main{padding:22px 15px 45px}.mobile-menu{display:inline-flex}.topbar{align-items:flex-start}.today{display:none}.topbar h1{font-size:23px}.welcome{padding:20px}.welcome .leaf{font-size:38px}.welcome h2{font-size:19px}.stats{gap:10px}.card{padding:15px}.stat-value{font-size:24px}.planner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top-actions .btn{padding:9px 10px}.subject-card{padding:15px}}
+@media(max-width:650px){.top-actions{flex-wrap:wrap;justify-content:flex-end}.app{display:block}.sidebar{position:fixed;z-index:15;left:-250px;top:0;transition:left .2s;width:238px;box-shadow:10px 0 30px #243b2812}.sidebar.open{left:0}.main{padding:22px 15px 45px}.mobile-menu{display:inline-flex}.topbar{align-items:flex-start}.today{display:none}.topbar h1{font-size:23px}.welcome{padding:20px}.welcome .leaf{font-size:38px}.welcome h2{font-size:19px}.stats{gap:10px}.card{padding:15px}.stat-value{font-size:24px}.planner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top-actions .btn{padding:9px 10px}.subject-card{padding:15px}}
 </style>
 </head>
 <body>
@@ -59,7 +59,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
   <main class="main">
     <header class="topbar">
       <div style="display:flex;gap:10px;align-items:flex-start"><button class="btn secondary mobile-menu" id="menuBtn" aria-label="Open menu">☰</button><div><div class="eyebrow">Your calm corner for focused work</div><h1 id="greeting">Welcome back.</h1></div></div>
-      <div class="top-actions"><div class="today" id="todayDate"></div><button class="btn" id="openTimer">◷ Focus timer</button></div>
+      <div class="top-actions"><div class="today" id="todayDate"></div><button class="btn secondary" id="fullscreenBtn" title="Enter full screen">⛶ Full screen</button><button class="btn" id="openTimer">◷ Focus timer</button></div>
     </header>
 
     <section class="page active" id="page-dashboard">
@@ -358,14 +358,67 @@ $('#exportData').onclick=downloadBackup;$('#exportData2').onclick=downloadBackup
 $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const incoming=JSON.parse(await f.text());if(!incoming.subjects||!incoming.sessions)throw new Error();if(confirm('Restore this backup? It will replace the data currently saved in this browser.')){data=Object.assign({subjects:defaultSubjects,targets:{},revisions:[],sessions:[],dayPlans:{},goal:8},incoming);save();toast('Backup restored.')}}catch{alert('That file does not look like a valid CA Final Sanctuary backup.')}e.target.value=''};
 $('#clearAll').onclick=()=>{if(confirm('This will permanently clear all CA Final Sanctuary data saved in this browser. Download a backup first if you want to keep it.')){localStorage.removeItem('caSanctuaryData');data={subjects:defaultSubjects.map(s=>({...s})),targets:{},revisions:[],sessions:[],dayPlans:{},goal:8};save();toast('Site data cleared.')}};
 
-// Focus timer: logs elapsed focus time only when user finishes/logs it.
+// Focus timer uses real elapsed wall-clock time, so switching tabs, minimising
+// the browser, or temporarily throttling background timers won't slow the countdown.
 let timerLength=25*60,remaining=timerLength,interval=null,running=false,lastTick=0,elapsed=0;
-function timerUI(){const m=Math.floor(remaining/60),s=remaining%60;$('#timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;$('#timerStart').textContent=running?'Pause':'Start';$('#timerStatus').textContent=running?'You’re in focus mode. Keep going.':remaining===0?'Session complete. Log your time!':'Ready when you are.'}
-function stopTick(){if(interval){clearInterval(interval);interval=null}running=false}
-function tick(){if(!running)return;const now=Date.now();const diff=Math.floor((now-lastTick)/1000);if(diff<1)return;lastTick+=diff*1000;remaining=Math.max(0,remaining-diff);elapsed+=diff;if(remaining<=0){stopTick();timerUI();toast('Focus session complete — well done!');return}timerUI()}
-function startPause(){if(running){stopTick();timerUI();return}if(remaining<=0){remaining=timerLength;elapsed=0}running=true;lastTick=Date.now();interval=setInterval(tick,500);timerUI()}
+function syncTimer(){
+  if(!running)return;
+  const now=Date.now();
+  const diff=Math.max(0,Math.floor((now-lastTick)/1000));
+  if(diff<1)return;
+  lastTick+=diff*1000;
+  elapsed+=diff;
+  remaining=Math.max(0,remaining-diff);
+  if(remaining<=0){
+    stopTick();
+    timerUI();
+    toast('Focus session complete — well done!');
+  } else {
+    timerUI();
+  }
+}
+function timerUI(){
+  const m=Math.floor(remaining/60),s=remaining%60;
+  $('#timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  $('#timerStart').textContent=running?'Pause':'Start';
+  $('#timerStatus').textContent=running?'You’re in focus mode. Keep going.':remaining===0?'Session complete. Log your time!':'Ready when you are.';
+}
+function stopTick(){
+  if(interval){clearInterval(interval);interval=null}
+  running=false;
+}
+function tick(){syncTimer()}
+function startPause(){
+  if(running){syncTimer();stopTick();timerUI();return}
+  if(remaining<=0){remaining=timerLength;elapsed=0}
+  running=true;lastTick=Date.now();interval=setInterval(tick,250);timerUI();
+}
 function resetTimer(){stopTick();remaining=timerLength;elapsed=0;timerUI()}
-function finishTimer(){stopTick();const mins=Math.floor(elapsed/60);if(mins>0)logSession(mins,'Focus timer');else toast('No full minutes to log yet.');remaining=timerLength;elapsed=0;timerUI()}
+function finishTimer(){
+  syncTimer();
+  stopTick();
+  const mins=Math.floor(elapsed/60);
+  if(mins>0)logSession(mins,'Focus timer');
+  else toast('No full minutes to log yet.');
+  remaining=timerLength;elapsed=0;timerUI();
+}
+// Immediately catch up when the tab becomes visible again.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running)syncTimer()});
+const fullscreenBtn=$('#fullscreenBtn');
+async function toggleFullscreen(){
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen();
+    }else{
+      await document.exitFullscreen();
+    }
+  }catch(err){toast('Full screen is not available in this browser/window.');}
+}
+fullscreenBtn.onclick=toggleFullscreen;
+document.addEventListener('fullscreenchange',()=>{
+  fullscreenBtn.textContent=document.fullscreenElement?'⛶ Exit full screen':'⛶ Full screen';
+  fullscreenBtn.title=document.fullscreenElement?'Exit full screen':'Enter full screen';
+});
 $('#openTimer').onclick=$('#welcomeTimer').onclick=()=>{$('#timerOverlay').classList.add('open');timerUI()};
 $('#closeTimer').onclick=()=>$('#timerOverlay').classList.remove('open');$('#timerOverlay').onclick=e=>{if(e.target.id==='timerOverlay')$('#timerOverlay').classList.remove('open')};
 $('#timerStart').onclick=startPause;$('#timerReset').onclick=resetTimer;$('#timerFinish').onclick=finishTimer;

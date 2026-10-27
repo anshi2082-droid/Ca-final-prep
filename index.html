@@ -404,10 +404,16 @@ function syncTimer(){
   elapsed+=diff;
   remaining=Math.max(0,remaining-diff);
   if(remaining<=0){
+    // Automatically log the full focus session as soon as the countdown reaches 00:00.
     stopTick();
-    timerUI();
+    const completedMinutes=Math.floor(elapsed/60);
+    if(completedMinutes>0) logSession(completedMinutes,'Focus timer');
+    toast('Focus session complete — time logged automatically!');
+    remaining=timerLength;
+    elapsed=0;
+    lastTick=Date.now();
     persistTimer();
-    toast('Focus session complete — well done!');
+    timerUI();
   } else {
     timerUI();
     persistTimer();
